@@ -19,7 +19,7 @@ import (
 )
 
 // TODO: Add a server endpoint to get this data.
-var journalingBetaList = map[keybase1.UID]bool{
+var adminFeatureList = map[keybase1.UID]bool{
 	"23260c2ce19420f97b58d7d95b68ca00": true, // Chris Coyne "chris"
 	"dbb165b7879fe7b1174df73bed0b9500": true, // Max Krohn, "max"
 	"ef2e49961eddaa77094b45ed635cfc00": true, // Jeremy Stribling, "strib"
@@ -71,7 +71,7 @@ func (jsc journalServerConfig) getEnableAuto(currentUID keybase1.UID) (
 	// hasn't touched the field. In either case, determine the
 	// value based on whether the current UID is in the
 	// journaling beta list.
-	return journalingBetaList[currentUID], false
+	return adminFeatureList[currentUID], false
 }
 
 // JournalServerStatus represents the overall status of the
@@ -112,50 +112,6 @@ type branchChangeListener interface {
 // avoid deadlocks.
 type mdFlushListener interface {
 	onMDFlush(tlf.ID, BranchID, MetadataRevision)
-}
-
-// diskLimiter is an interface for limiting disk usage.
-type diskLimiter interface {
-	// onJournalEnable is called when initializing a TLF journal
-	// with that journal's current disk usage. Both journalBytes
-	// and journalFiles must be >= 0. The updated available byte
-	// and file count must be returned.
-	onJournalEnable(
-		ctx context.Context, journalBytes, journalFiles int64) (
-		availableBytes, availableFiles int64)
-
-	// onJournalDisable is called when shutting down a TLF journal
-	// with that journal's current disk usage. Both journalBytes
-	// and journalFiles must be >= 0.
-	onJournalDisable(ctx context.Context, journalBytes, journalFiles int64)
-
-	// beforeBlockPut is called before putting a block of the
-	// given byte and file count, both of which must be > 0. It
-	// may block, but must return immediately with a
-	// (possibly-wrapped) ctx.Err() if ctx is cancelled. The
-	// updated available byte and file count must be returned,
-	// even if err is non-nil.
-	beforeBlockPut(ctx context.Context,
-		blockBytes, blockFiles int64) (
-		availableBytes, availableFiles int64, err error)
-
-	// afterBlockPut is called after putting a block of the given
-	// byte and file count, which must match the corresponding call to
-	// beforeBlockPut. putData reflects whether or not the data
-	// was actually put; if it's false, it's either because of an
-	// error or because the block already existed.
-	afterBlockPut(ctx context.Context,
-		blockBytes, blockFiles int64, putData bool)
-
-	// onBlockDelete is called after deleting a block of the given
-	// byte and file count, both of which must be >= 0. (Deleting
-	// a block with either zero byte or zero file count shouldn't
-	// happen, but may as well let it go through.)
-	onBlockDelete(ctx context.Context, blockBytes, blockFiles int64)
-
-	// getStatus returns an object that's marshallable into JSON
-	// for use in displaying status.
-	getStatus() interface{}
 }
 
 // TODO: JournalServer isn't really a server, although it can create
